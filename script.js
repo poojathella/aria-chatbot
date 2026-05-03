@@ -1,6 +1,6 @@
 // ============================================================
 //  ARIA — script.js
-//  Powered by Groq API (100% FREE, no CORS issues)
+//  Powered by Groq API (100% FREE, no CORS issues) — updated Sun May  3 14:13:16 UTC 2026
 //  Get free key: console.groq.com
 // ============================================================
 
