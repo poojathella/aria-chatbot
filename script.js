@@ -1,21 +1,21 @@
 // ============================================================
 //  ARIA — script.js
-//  Powered by Google Gemini API (100% FREE)
-//  Free tier: 1 million tokens/day, 15 requests/minute
+//  Powered by Hugging Face Inference API (100% FREE)
+//  Model: mistralai/Mistral-7B-Instruct-v0.2
 // ============================================================
 
 // ---- App State ----
-let apiKey  = '';
-let isDemo  = false;
+let apiKey   = '';
+let isDemo   = false;
 let listening = false;
-let ttsOn   = false;
+let ttsOn    = false;
 let recognition = null;
-let history = [];   // Gemini multi-turn conversation history
+let history  = [];
 let msgCount = 0;
 let demoIndex = 0;
 
 // ============================================================
-//  NLP Intent Matching — offline fallback responses
+//  NLP Intent Matching — offline fallback
 // ============================================================
 const intents = [
   { patterns: ['hello','hi','hey','howdy','greetings'],
@@ -23,7 +23,7 @@ const intents = [
   { patterns: ['bye','goodbye','see you','farewell'],
     response: "Goodbye! Come back anytime — I'll be here!" },
   { patterns: ['who are you','your name','what are you','about yourself'],
-    response: "I'm ARIA — Advanced Reasoning & Intelligence Assistant, powered by Google Gemini AI. I can help with coding, writing, analysis, brainstorming, and much more!" },
+    response: "I'm ARIA — Advanced Reasoning & Intelligence Assistant, powered by Hugging Face AI. I can help with coding, writing, analysis, brainstorming, and much more!" },
   { patterns: ['joke','funny','laugh','humor'],
     response: "Why do programmers always mix up Christmas and Halloween? Because Oct 31 = Dec 25! 🎄" },
   { patterns: ['thank','thanks','appreciate','cheers'],
@@ -33,9 +33,7 @@ const intents = [
   { patterns: ['weather','forecast','temperature','rain'],
     response: "I don't have live weather data, but I can explain meteorology or help you find a weather app!" },
   { patterns: ['who made you','who built you','who created'],
-    response: "I'm ARIA, a portfolio chatbot powered by Google Gemini AI. Built with HTML, CSS, and JavaScript — 100% free!" },
-  { patterns: ['meaning of life','42','philosophy'],
-    response: "42 — according to The Hitchhiker's Guide to the Galaxy! But philosophically, meaning is what you create through connection, contribution, and curiosity." },
+    response: "I'm ARIA, a portfolio chatbot powered by Hugging Face AI. Built with HTML, CSS, and JavaScript — 100% free!" },
 ];
 
 function matchIntent(text) {
@@ -46,12 +44,11 @@ function matchIntent(text) {
   return null;
 }
 
-// Demo mode fallback messages
 const demoReplies = [
-  "I'm in demo mode. For full AI responses (free!), click ⚙ → paste your Gemini key from aistudio.google.com/apikey",
-  "Connect your free Google Gemini API key via the ⚙ settings icon to unlock full AI conversation!",
-  "Demo mode only. Your free key from aistudio.google.com/apikey gives you 1 million tokens/day — completely free.",
-  "Full AI capabilities are one free API key away! Settings → get key at aistudio.google.com → paste it in."
+  "I'm in demo mode. For full AI, click ⚙ → paste your Hugging Face token from huggingface.co/settings/tokens",
+  "Connect your free Hugging Face token via ⚙ settings to unlock full AI conversation!",
+  "Your free HF token from huggingface.co/settings/tokens unlocks full AI — completely free.",
+  "Full AI is one free token away! Settings → get token at huggingface.co → paste it in."
 ];
 
 // ============================================================
@@ -59,22 +56,22 @@ const demoReplies = [
 // ============================================================
 function saveKey() {
   const k = document.getElementById('kInput').value.trim();
-  if (!k || !k.startsWith('AIza')) {
-    toast('Please enter a valid Gemini key (starts with AIza)');
+  if (!k || !k.startsWith('hf_')) {
+    toast('Please enter a valid Hugging Face token (starts with hf_)');
     return;
   }
   apiKey = k;
   isDemo = false;
   document.getElementById('modal').style.display = 'none';
-  setStatus('Connected — Gemini AI active · Free tier', 'online');
+  setStatus('Connected — Hugging Face AI active · Free', 'online');
   setDot(true);
-  toast('✓ Connected! Gemini AI is ready — 100% free');
+  toast('✓ Connected! Hugging Face AI is ready');
 }
 
 function demoMode() {
   isDemo = true;
   document.getElementById('modal').style.display = 'none';
-  setStatus('Demo mode — click ⚙ to add free API key', 'idle');
+  setStatus('Demo mode — click ⚙ to add free HF token', 'idle');
   setDot(false);
 }
 
@@ -103,24 +100,18 @@ function setStatus(text, type = 'idle') {
 }
 
 // ============================================================
-//  HELPER UTILITIES
+//  HELPERS
 // ============================================================
 function ftime() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// Basic markdown → HTML formatter
 function fmt(t) {
   let h = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Code blocks
   h = h.replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  // Inline code
   h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Bold
   h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // Italic
   h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // Line breaks
   h = h.replace(/\n/g, '<br>');
   return h;
 }
@@ -130,7 +121,6 @@ function fmt(t) {
 // ============================================================
 function addMsg(text, role) {
   msgCount++;
-  // Remove welcome screen on first message
   document.getElementById('welcome')?.remove();
 
   const area   = document.getElementById('msgs');
@@ -142,12 +132,7 @@ function addMsg(text, role) {
   g.className = `msg-g${isBot ? '' : ' user'}`;
 
   const avHTML = isBot
-    ? `<div class="av bot">
-         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-           <circle cx="8" cy="8" r="3" fill="none" stroke="#3d8ef0" stroke-width="1.2"/>
-           <circle cx="8" cy="8" r="1.2" fill="#3d8ef0"/>
-         </svg>
-       </div>`
+    ? `<div class="av bot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="none" stroke="#3d8ef0" stroke-width="1.2"/><circle cx="8" cy="8" r="1.2" fill="#3d8ef0"/></svg></div>`
     : `<div class="av usr">YOU</div>`;
 
   g.innerHTML = `
@@ -172,27 +157,20 @@ function addMsg(text, role) {
 
 function showTyping(v) {
   const t = document.getElementById('typing');
-  if (v) {
-    t.classList.add('show');
-    document.getElementById('msgs').scrollTop = 9999;
-  } else {
-    t.classList.remove('show');
-  }
+  if (v) { t.classList.add('show'); document.getElementById('msgs').scrollTop = 9999; }
+  else t.classList.remove('show');
 }
 
-// Copy message to clipboard
 function cp(id) {
   const el = document.getElementById(id);
   if (!el) return;
   navigator.clipboard.writeText(el.innerText).then(() => toast('Copied!'));
 }
 
-// Toast notification
 function toast(msg) {
   document.querySelector('.toast')?.remove();
   const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
+  t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2100);
 }
@@ -204,15 +182,9 @@ function clearChat() {
   history = [];
   document.getElementById('msgs').innerHTML = `
     <div class="welcome" id="welcome">
-      <div class="wicon">
-        <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-          <circle cx="17" cy="17" r="7" fill="none" stroke="#3d8ef0" stroke-width="1.4"/>
-          <path d="M17 5L17 10M17 24L17 29M5 17L10 17M24 17L29 17" stroke="#3d8ef0" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="17" cy="17" r="3" fill="#3d8ef0"/>
-        </svg>
-      </div>
+      <div class="wicon"><svg width="34" height="34" viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="7" fill="none" stroke="#3d8ef0" stroke-width="1.4"/><path d="M17 5L17 10M17 24L17 29M5 17L10 17M24 17L29 17" stroke="#3d8ef0" stroke-width="1.4" stroke-linecap="round"/><circle cx="17" cy="17" r="3" fill="#3d8ef0"/></svg></div>
       <div class="wtitle">Hello, I'm ARIA</div>
-      <div class="wsub">Powered by Google Gemini — completely free. Ask me anything.</div>
+      <div class="wsub">Powered by Hugging Face AI — completely free. Ask me anything.</div>
       <div class="wchips">
         <div class="wchip" onclick="go('Explain machine learning in simple terms')">Machine learning basics</div>
         <div class="wchip" onclick="go('Help me brainstorm a unique startup idea')">Startup brainstorm</div>
@@ -221,12 +193,7 @@ function clearChat() {
       </div>
     </div>
     <div class="typing" id="typing">
-      <div class="av bot">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="3" fill="none" stroke="#3d8ef0" stroke-width="1.2"/>
-          <circle cx="8" cy="8" r="1.2" fill="#3d8ef0"/>
-        </svg>
-      </div>
+      <div class="av bot"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="none" stroke="#3d8ef0" stroke-width="1.2"/><circle cx="8" cy="8" r="1.2" fill="#3d8ef0"/></svg></div>
       <div class="tdots"><div class="d"></div><div class="d"></div><div class="d"></div></div>
     </div>`;
 }
@@ -242,38 +209,30 @@ async function send() {
   inp.value = '';
   resize(inp);
   document.getElementById('sbtn').disabled = true;
-
   addMsg(text, 'user');
   showTyping(true);
   setStatus('Thinking...', 'thinking');
 
   try {
     let reply;
-
     if (apiKey && !isDemo) {
-      // Full AI mode — call Gemini
-      reply = await callGemini(text);
+      reply = await callHuggingFace(text);
     } else {
-      // Offline mode — intent match or demo reply
       const intent = matchIntent(text);
       await delay(600 + Math.random() * 500);
       reply = intent || demoReplies[demoIndex++ % demoReplies.length];
     }
-
     showTyping(false);
     addMsg(reply, 'bot');
-
-    // Speak if TTS is enabled
     if (ttsOn) speakText(reply);
-
     setStatus(
-      apiKey ? 'Connected — Gemini AI active · Free tier' : 'Demo mode — click ⚙ to add free API key',
+      apiKey ? 'Connected — Hugging Face AI active · Free' : 'Demo mode — click ⚙ to add free HF token',
       'online'
     );
   } catch (e) {
     showTyping(false);
-    addMsg('⚠ Error: ' + (e.message || 'Something went wrong.'), 'bot');
-    setStatus('Error — ' + (e.message || 'check your API key'), 'err');
+    addMsg('⚠ Error: ' + (e.message || 'Something went wrong. Try again.'), 'bot');
+    setStatus('Error — ' + (e.message || 'check your token'), 'err');
   }
 
   document.getElementById('sbtn').disabled = false;
@@ -282,93 +241,103 @@ async function send() {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ============================================================
-//  GOOGLE GEMINI API CALL (FREE)
-//  Model: gemini-2.0-flash
-//  Free tier: 15 req/min, 1M tokens/day
+//  HUGGING FACE INFERENCE API (FREE)
+//  Model: mistralai/Mistral-7B-Instruct-v0.2
 // ============================================================
-async function callGemini(userText) {
-  // Add user message to history
-  history.push({ role: 'user', parts: [{ text: userText }] });
+async function callHuggingFace(userText) {
+  // Build last 6 messages as context
+  const recent = history.slice(-6);
+  let context = '';
+  for (const msg of recent) {
+    if (msg.role === 'user')      context += `[INST] ${msg.content} [/INST]\n`;
+    if (msg.role === 'assistant') context += `${msg.content}\n`;
+  }
+
+  // Mistral instruct prompt format
+  const prompt = `<s>[INST] You are ARIA (Advanced Reasoning & Intelligence Assistant), a premium helpful AI. Be concise and clear. Use markdown when helpful. [/INST] Understood, I am ARIA!</s>
+${context}[INST] ${userText} [/INST]`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{
-            text: `You are ARIA (Advanced Reasoning & Intelligence Assistant), a premium AI assistant 
-with a professional, helpful personality. Be thoughtful and concise. 
-Use light markdown formatting when helpful (bold for emphasis, code blocks for code). 
-Keep responses clear and well-structured.`
-          }]
-        },
-        contents: history,
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: 0.75
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 512,
+          temperature: 0.7,
+          top_p: 0.95,
+          do_sample: true,
+          return_full_text: false   // ← only return the new reply, not the prompt
         }
       })
     }
   );
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg = err.error?.message || `API error ${res.status}`;
-    if (res.status === 429) throw new Error('Rate limit hit — wait a moment (free tier: 15 req/min)');
-    if (res.status === 400) throw new Error('Invalid API key — check your key in settings');
-    throw new Error(msg);
+  // Model cold-start — HF free tier loads model on first request
+  if (res.status === 503) {
+    const data = await res.json().catch(() => ({}));
+    const wait = data.estimated_time ? Math.ceil(data.estimated_time) : 20;
+    throw new Error(`Model is warming up (~${wait}s) — please wait and try again`);
   }
 
-  const data  = await res.json();
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!reply) throw new Error('Empty response from Gemini');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new Error('Invalid token — check your HF token in ⚙ settings');
+    if (res.status === 429) throw new Error('Rate limit hit — wait a moment and try again');
+    throw new Error(err.error || `API error ${res.status}`);
+  }
 
-  // Add model reply to history (keep last 20 turns = 40 entries)
-  history.push({ role: 'model', parts: [{ text: reply }] });
-  if (history.length > 40) history = history.slice(-40);
+  const data = await res.json();
+
+  // Parse response
+  let reply = '';
+  if (Array.isArray(data) && data[0]?.generated_text) {
+    reply = data[0].generated_text.trim();
+  } else if (typeof data.generated_text === 'string') {
+    reply = data.generated_text.trim();
+  }
+
+  if (!reply) throw new Error('Empty response — please try again');
+
+  // Clean up any stray prompt artifacts
+  reply = reply.replace(/^\[INST\][\s\S]*?\[\/INST\]/g, '').trim();
+  reply = reply.replace(/^<s>|<\/s>$/g, '').trim();
+
+  // Save to history (keep last 10 turns)
+  history.push({ role: 'user',      content: userText });
+  history.push({ role: 'assistant', content: reply });
+  if (history.length > 20) history = history.slice(-20);
 
   return reply;
 }
 
-// Quick-send from suggestion chips / welcome cards
+// Quick-send from chips
 function go(text) {
   document.getElementById('inp').value = text;
   send();
 }
 
 // ============================================================
-//  VOICE INPUT — Web Speech API
+//  VOICE INPUT
 // ============================================================
 function toggleVoice() {
   if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
-    toast('Voice input not supported in this browser');
-    return;
+    toast('Voice input not supported in this browser'); return;
   }
   if (listening) { stopListen(); return; }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SR();
-  recognition.continuous     = false;
-  recognition.interimResults = true;
-  recognition.lang           = 'en-US';
-
-  recognition.onstart = () => {
-    listening = true;
-    document.getElementById('vbtn').classList.add('on');
-    setStatus('🎤 Listening — speak now', 'listening');
-  };
-  recognition.onresult = (e) => {
-    const t = Array.from(e.results).map(r => r[0].transcript).join('');
-    document.getElementById('inp').value = t;
-    resize(document.getElementById('inp'));
-  };
-  recognition.onerror = (e) => { toast('Voice error: ' + e.error); stopListen(); };
-  recognition.onend   = () => {
-    stopListen();
-    if (document.getElementById('inp').value.trim()) send();
-  };
+  recognition.continuous = false; recognition.interimResults = true; recognition.lang = 'en-US';
+  recognition.onstart  = () => { listening = true; document.getElementById('vbtn').classList.add('on'); setStatus('🎤 Listening — speak now', 'listening'); };
+  recognition.onresult = (e) => { const t = Array.from(e.results).map(r => r[0].transcript).join(''); document.getElementById('inp').value = t; resize(document.getElementById('inp')); };
+  recognition.onerror  = (e) => { toast('Voice error: ' + e.error); stopListen(); };
+  recognition.onend    = () => { stopListen(); if (document.getElementById('inp').value.trim()) send(); };
   recognition.start();
 }
 
@@ -376,11 +345,11 @@ function stopListen() {
   listening = false;
   if (recognition) recognition.stop();
   document.getElementById('vbtn').classList.remove('on');
-  setStatus(apiKey ? 'Connected — Gemini AI active · Free tier' : 'Demo mode', 'idle');
+  setStatus(apiKey ? 'Connected — Hugging Face AI active · Free' : 'Demo mode', 'idle');
 }
 
 // ============================================================
-//  TEXT-TO-SPEECH — Web Speech Synthesis API
+//  TEXT-TO-SPEECH
 // ============================================================
 function toggleTTS() {
   ttsOn = !ttsOn;
@@ -393,15 +362,14 @@ function speakText(text) {
   speechSynthesis.cancel();
   const clean = text.replace(/[*`#>]/g, '').replace(/<[^>]+>/g, '');
   const u = new SpeechSynthesisUtterance(clean);
-  u.rate  = 1.0;
-  u.pitch = 1.0;
+  u.rate = 1.0; u.pitch = 1.0;
   u.onstart = () => setStatus('🔊 Speaking...', 'speaking');
-  u.onend   = () => setStatus(apiKey ? 'Connected — Gemini AI active · Free tier' : 'Demo mode', 'idle');
+  u.onend   = () => setStatus(apiKey ? 'Connected — Hugging Face AI active · Free' : 'Demo mode', 'idle');
   speechSynthesis.speak(u);
 }
 
 // ============================================================
-//  AUTO-RESIZE TEXTAREA
+//  TEXTAREA AUTO-RESIZE
 // ============================================================
 function resize(el) {
   el.style.height = 'auto';
@@ -412,19 +380,8 @@ function resize(el) {
 //  EVENT LISTENERS
 // ============================================================
 document.getElementById('inp').addEventListener('keydown', e => {
-  // Enter to send, Shift+Enter for new line
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    send();
-  }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 });
-
-document.getElementById('inp').addEventListener('input', function () {
-  resize(this);
-});
-
-// Online / offline detection
-window.addEventListener('online',  () => {
-  if (apiKey) setStatus('Connected — Gemini AI active · Free tier', 'online');
-});
+document.getElementById('inp').addEventListener('input', function () { resize(this); });
+window.addEventListener('online',  () => { if (apiKey) setStatus('Connected — Hugging Face AI active · Free', 'online'); });
 window.addEventListener('offline', () => setStatus('You are offline', 'err'));
