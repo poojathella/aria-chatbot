@@ -242,23 +242,57 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ============================================================
 //  HUGGING FACE INFERENCE API (FREE)
-//  Model: mistralai/Mistral-7B-Instruct-v0.2
+//  Uses multiple models with automatic fallback:
+//  1. HuggingFaceH4/zephyr-7b-beta  (best quality)
+//  2. microsoft/DialoGPT-medium      (fast fallback)
+//  3. facebook/blenderbot-400M-distill (always works)
 // ============================================================
+
+// Try models in order until one works
+const HF_MODELS = [
+  'HuggingFaceH4/zephyr-7b-beta',
+  'tiiuae/falcon-7b-instruct',
+  'facebook/blenderbot-400M-distill'
+];
+
 async function callHuggingFace(userText) {
-  // Build last 6 messages as context
-  const recent = history.slice(-6);
-  let context = '';
-  for (const msg of recent) {
-    if (msg.role === 'user')      context += `[INST] ${msg.content} [/INST]\n`;
-    if (msg.role === 'assistant') context += `${msg.content}\n`;
+  let lastError = '';
+
+  for (const model of HF_MODELS) {
+    try {
+      const reply = await tryModel(model, userText);
+      if (reply) return reply;
+    } catch (e) {
+      lastError = e.message;
+      // If auth error, stop immediately — no point trying other models
+      if (e.message.includes('Invalid token') || e.message.includes('401')) {
+        throw e;
+      }
+      // Otherwise try next model
+      continue;
+    }
   }
 
-  // Mistral instruct prompt format
-  const prompt = `<s>[INST] You are ARIA (Advanced Reasoning & Intelligence Assistant), a premium helpful AI. Be concise and clear. Use markdown when helpful. [/INST] Understood, I am ARIA!</s>
-${context}[INST] ${userText} [/INST]`;
+  throw new Error(lastError || 'All models failed — please try again in a moment');
+}
+
+async function tryModel(model, userText) {
+  // Build conversation context
+  const recent = history.slice(-4);
+  let context = '';
+  for (const msg of recent) {
+    if (msg.role === 'user')      context += `User: ${msg.content}\n`;
+    if (msg.role === 'assistant') context += `ARIA: ${msg.content}\n`;
+  }
+
+  // Universal prompt format that works across models
+  const prompt = `You are ARIA, a helpful AI assistant. Be concise, friendly, and clear.
+
+${context}User: ${userText}
+ARIA:`;
 
   const res = await fetch(
-    'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+    `https://api-inference.huggingface.co/models/${model}`,
     {
       method: 'POST',
       headers: {
@@ -268,47 +302,63 @@ ${context}[INST] ${userText} [/INST]`;
       body: JSON.stringify({
         inputs: prompt,
         parameters: {
-          max_new_tokens: 512,
+          max_new_tokens: 300,
           temperature: 0.7,
-          top_p: 0.95,
+          top_p: 0.9,
           do_sample: true,
-          return_full_text: false   // ← only return the new reply, not the prompt
+          return_full_text: false,
+          stop: ['\nUser:', '\nARIA:', '</s>']
+        },
+        options: {
+          wait_for_model: true,   // ← auto-wait for model to load instead of 503 error
+          use_cache: false
         }
       })
     }
   );
 
-  // Model cold-start — HF free tier loads model on first request
-  if (res.status === 503) {
-    const data = await res.json().catch(() => ({}));
-    const wait = data.estimated_time ? Math.ceil(data.estimated_time) : 20;
-    throw new Error(`Model is warming up (~${wait}s) — please wait and try again`);
+  // Auth error
+  if (res.status === 401) {
+    throw new Error('Invalid token — please check your HF token in ⚙ settings');
+  }
+
+  // Rate limit
+  if (res.status === 429) {
+    throw new Error('Rate limit hit — wait a moment and try again');
+  }
+
+  // Model unavailable — try next
+  if (res.status === 503 || res.status === 504) {
+    throw new Error(`Model ${model} unavailable, trying next...`);
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    if (res.status === 401) throw new Error('Invalid token — check your HF token in ⚙ settings');
-    if (res.status === 429) throw new Error('Rate limit hit — wait a moment and try again');
     throw new Error(err.error || `API error ${res.status}`);
   }
 
   const data = await res.json();
 
-  // Parse response
+  // Parse response — HF can return different formats
   let reply = '';
   if (Array.isArray(data) && data[0]?.generated_text) {
-    reply = data[0].generated_text.trim();
+    reply = data[0].generated_text;
   } else if (typeof data.generated_text === 'string') {
-    reply = data.generated_text.trim();
+    reply = data.generated_text;
+  } else if (Array.isArray(data) && data[0]?.text) {
+    reply = data[0].text;
   }
 
-  if (!reply) throw new Error('Empty response — please try again');
+  reply = reply.trim();
 
-  // Clean up any stray prompt artifacts
-  reply = reply.replace(/^\[INST\][\s\S]*?\[\/INST\]/g, '').trim();
-  reply = reply.replace(/^<s>|<\/s>$/g, '').trim();
+  // Clean up artifacts
+  reply = reply.replace(/^(ARIA:|Assistant:)/i, '').trim();
+  reply = reply.replace(/User:[\s\S]*$/i, '').trim();  // cut off if model added next turn
+  reply = reply.replace(/<\/?s>/g, '').trim();
 
-  // Save to history (keep last 10 turns)
+  if (!reply || reply.length < 2) throw new Error('Empty response');
+
+  // Save to history
   history.push({ role: 'user',      content: userText });
   history.push({ role: 'assistant', content: reply });
   if (history.length > 20) history = history.slice(-20);
