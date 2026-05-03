@@ -241,58 +241,32 @@ async function send() {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ============================================================
-//  HUGGING FACE INFERENCE API (FREE)
-//  Uses multiple models with automatic fallback:
-//  1. HuggingFaceH4/zephyr-7b-beta  (best quality)
-//  2. microsoft/DialoGPT-medium      (fast fallback)
-//  3. facebook/blenderbot-400M-distill (always works)
+//  HUGGING FACE — via OpenAI-compatible Inference API
+//  This endpoint supports CORS so it works directly in browser
+//  Model: Qwen/Qwen2.5-72B-Instruct (free, powerful, CORS-safe)
 // ============================================================
-
-// Try models in order until one works
-const HF_MODELS = [
-  'HuggingFaceH4/zephyr-7b-beta',
-  'tiiuae/falcon-7b-instruct',
-  'facebook/blenderbot-400M-distill'
-];
-
 async function callHuggingFace(userText) {
-  let lastError = '';
 
-  for (const model of HF_MODELS) {
-    try {
-      const reply = await tryModel(model, userText);
-      if (reply) return reply;
-    } catch (e) {
-      lastError = e.message;
-      // If auth error, stop immediately — no point trying other models
-      if (e.message.includes('Invalid token') || e.message.includes('401')) {
-        throw e;
-      }
-      // Otherwise try next model
-      continue;
+  // Build messages array (OpenAI chat format)
+  const messages = [
+    {
+      role: 'system',
+      content: 'You are ARIA (Advanced Reasoning & Intelligence Assistant), a premium helpful AI assistant. Be concise, friendly, and clear. Use markdown when helpful.'
     }
-  }
+  ];
 
-  throw new Error(lastError || 'All models failed — please try again in a moment');
-}
-
-async function tryModel(model, userText) {
-  // Build conversation context
-  const recent = history.slice(-4);
-  let context = '';
+  // Add conversation history (last 6 turns)
+  const recent = history.slice(-6);
   for (const msg of recent) {
-    if (msg.role === 'user')      context += `User: ${msg.content}\n`;
-    if (msg.role === 'assistant') context += `ARIA: ${msg.content}\n`;
+    messages.push({ role: msg.role, content: msg.content });
   }
 
-  // Universal prompt format that works across models
-  const prompt = `You are ARIA, a helpful AI assistant. Be concise, friendly, and clear.
+  // Add current user message
+  messages.push({ role: 'user', content: userText });
 
-${context}User: ${userText}
-ARIA:`;
-
+  // Use HF's OpenAI-compatible endpoint — this supports CORS in browser
   const res = await fetch(
-    `https://api-inference.huggingface.co/models/${model}`,
+    'https://api-inference.huggingface.co/v1/chat/completions',
     {
       method: 'POST',
       headers: {
@@ -300,63 +274,28 @@ ARIA:`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 300,
-          temperature: 0.7,
-          top_p: 0.9,
-          do_sample: true,
-          return_full_text: false,
-          stop: ['\nUser:', '\nARIA:', '</s>']
-        },
-        options: {
-          wait_for_model: true,   // ← auto-wait for model to load instead of 503 error
-          use_cache: false
-        }
+        model: 'Qwen/Qwen2.5-72B-Instruct',
+        messages: messages,
+        max_tokens: 500,
+        temperature: 0.7,
+        stream: false
       })
     }
   );
 
-  // Auth error
-  if (res.status === 401) {
-    throw new Error('Invalid token — please check your HF token in ⚙ settings');
-  }
-
-  // Rate limit
-  if (res.status === 429) {
-    throw new Error('Rate limit hit — wait a moment and try again');
-  }
-
-  // Model unavailable — try next
-  if (res.status === 503 || res.status === 504) {
-    throw new Error(`Model ${model} unavailable, trying next...`);
-  }
+  // Handle errors clearly
+  if (res.status === 401) throw new Error('Invalid token — click ⚙ and re-enter your hf_ token');
+  if (res.status === 429) throw new Error('Rate limit hit — wait a moment and try again');
+  if (res.status === 422) throw new Error('Model unavailable — try again in a moment');
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `API error ${res.status}`);
+    throw new Error(err.error?.message || `Error ${res.status} — try again`);
   }
 
   const data = await res.json();
-
-  // Parse response — HF can return different formats
-  let reply = '';
-  if (Array.isArray(data) && data[0]?.generated_text) {
-    reply = data[0].generated_text;
-  } else if (typeof data.generated_text === 'string') {
-    reply = data.generated_text;
-  } else if (Array.isArray(data) && data[0]?.text) {
-    reply = data[0].text;
-  }
-
-  reply = reply.trim();
-
-  // Clean up artifacts
-  reply = reply.replace(/^(ARIA:|Assistant:)/i, '').trim();
-  reply = reply.replace(/User:[\s\S]*$/i, '').trim();  // cut off if model added next turn
-  reply = reply.replace(/<\/?s>/g, '').trim();
-
-  if (!reply || reply.length < 2) throw new Error('Empty response');
+  const reply = data.choices?.[0]?.message?.content?.trim();
+  if (!reply) throw new Error('Empty response — please try again');
 
   // Save to history
   history.push({ role: 'user',      content: userText });
