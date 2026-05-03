@@ -25,25 +25,25 @@
       </svg>
     </div>
     <div class="mtitle">Connect ARIA — Free</div>
-    <div class="msub">Powered by Hugging Face AI</div>
-    <div class="fbadge"><span>✓ 100% Free &nbsp;·&nbsp; No Credit Card &nbsp;·&nbsp; No Billing Ever</span></div>
+    <div class="msub">Powered by Groq AI — blazing fast, zero CORS issues</div>
+    <div class="fbadge"><span>✓ ✓ 100% Free · No Credit Card · Instant Setup</span></div>
     <div class="steps">
       <div class="step">
         <div class="snum">1</div>
-        <div class="stxt">Visit <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a> — sign in with your HF account</div>
+        <div class="stxt">Visit <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — sign in with Google</div>
       </div>
       <div class="step">
         <div class="snum">2</div>
-        <div class="stxt">Click <strong>"New token"</strong> → name it anything → click <strong>"Generate"</strong></div>
+        <div class="stxt">Click <strong>"Create API Key" — free and instant</strong></div>
       </div>
       <div class="step">
         <div class="snum">3</div>
-        <div class="stxt">Copy the token and paste it below — done!</div>
+        <div class="stxt">Copy the key (starts with gsk_) and paste it below — done!</div>
       </div>
     </div>
-    <label class="mlabel">Hugging Face Token</label>
-    <input class="minput" id="kInput" type="password" placeholder="hf_..." />
-    <div class="mhint">Stored in memory only — never saved, never shared. Free tier available with HF account.</div>
+    <label class="mlabel">Groq API Key</label>
+    <input class="minput" id="kInput" type="password" placeholder="gsk_..." />
+    <div class="mhint">Stored in memory only — never saved, never shared. Free tier: 30 req/min, no credit card needed.</div>
     <button class="mbtn" onclick="saveKey()">Connect for Free</button>
     <span class="mskip" onclick="demoMode()">Skip — use demo mode (limited offline responses)</span>
   </div>
