@@ -14,41 +14,6 @@
 <div class="orb orb-1"></div>
 <div class="orb orb-2"></div>
 
-<!-- API Key Modal -->
-<div class="overlay" id="modal">
-  <div class="mbox">
-    <div class="mlogo">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <circle cx="14" cy="14" r="6" fill="none" stroke="#3d8ef0" stroke-width="1.5"/>
-        <path d="M14 4L14 8M14 20L14 24M4 14L8 14M20 14L24 14" stroke="#3d8ef0" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="14" cy="14" r="2.5" fill="#3d8ef0"/>
-      </svg>
-    </div>
-    <div class="mtitle">Connect ARIA — Free</div>
-    <div class="msub">Powered by Groq AI — blazing fast, zero CORS issues</div>
-    <div class="fbadge"><span>✓ ✓ 100% Free · No Credit Card · Instant Setup</span></div>
-    <div class="steps">
-      <div class="step">
-        <div class="snum">1</div>
-        <div class="stxt">Visit <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — sign in with Google</div>
-      </div>
-      <div class="step">
-        <div class="snum">2</div>
-        <div class="stxt">Click <strong>"Create API Key" — free and instant</strong></div>
-      </div>
-      <div class="step">
-        <div class="snum">3</div>
-        <div class="stxt">Copy the key (starts with gsk_) and paste it below — done!</div>
-      </div>
-    </div>
-    <label class="mlabel">Groq API Key</label>
-    <input class="minput" id="kInput" type="password" placeholder="gsk_..." />
-    <div class="mhint">Stored in memory only — never saved, never shared. Free tier: 30 req/min, no credit card needed.</div>
-    <button class="mbtn" onclick="saveKey()">Connect for Free</button>
-    <span class="mskip" onclick="demoMode()">Skip — use demo mode (limited offline responses)</span>
-  </div>
-</div>
-
 <!-- Chat Window -->
 <div class="chat-window">
 
@@ -65,19 +30,13 @@
       <div class="hd-name">ARIA</div>
       <div class="hd-sub">
         <span class="dot off" id="sdot"></span>
-        <span id="slabel">Waiting for API key...</span>
+        <span id="slabel">Loading...</span>
       </div>
     </div>
     <div class="hd-btns">
       <button class="hd-btn" onclick="clearChat()" title="Clear chat">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <path d="M2 4h12M5.5 4V3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1m2 0v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="hd-btn" onclick="showModal()" title="Settings / API Key">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" stroke="currentColor" stroke-width="1.3"/>
-          <path d="M13.3 8a5.5 5.5 0 0 0-.1-.9l1.6-1.1-1.4-2.4-1.8.7a5.5 5.5 0 0 0-1.5-.9L9.8 2H6.2L6 3.4a5.5 5.5 0 0 0-1.5.9L2.7 3.6 1.3 6l1.6 1.1A5.5 5.5 0 0 0 2.8 8c0 .3 0 .6.1.9L1.3 10 2.7 12.4l1.8-.7a5.5 5.5 0 0 0 1.5.9L6.2 14h3.6l.2-1.4a5.5 5.5 0 0 0 1.5-.9l1.8.7L14.7 10 13.1 8.9A5.5 5.5 0 0 0 13.3 8z" stroke="currentColor" stroke-width="1.3"/>
         </svg>
       </button>
     </div>
@@ -104,7 +63,7 @@
         </svg>
       </div>
       <div class="wtitle">Hello, I'm ARIA</div>
-      <div class="wsub">Powered by Google Gemini — completely free. Ask me anything.</div>
+      <div class="wsub">Powered by Groq AI — blazing fast and completely free. Ask me anything.</div>
       <div class="wchips">
         <div class="wchip" onclick="go('Explain machine learning in simple terms')">Machine learning basics</div>
         <div class="wchip" onclick="go('Help me brainstorm a unique startup idea')">Startup brainstorm</div>
@@ -134,7 +93,7 @@
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
       <circle cx="7" cy="7" r="2.5" fill="currentColor" opacity=".6"/>
     </svg>
-    <span id="stxt">Add your free Gemini API key to get started</span>
+    <span id="stxt">Loading...</span>
   </div>
 
   <!-- Input Area -->
@@ -148,7 +107,7 @@
             <path d="M2.5 8.5A5.5 5.5 0 0 0 8 14a5.5 5.5 0 0 0 5.5-5.5M8 14v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="ibtn sec" id="tbtn" title="Text-to-speech toggle" onclick="toggleTTS()">
+        <button class="ibtn sec" id="tbtn" title="Text-to-speech" onclick="toggleTTS()">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M3 5.5H1.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5H3l3.5 3V2.5L3 5.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
             <path d="M9.5 6a2.5 2.5 0 0 1 0 4M11 4a5 5 0 0 1 0 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>

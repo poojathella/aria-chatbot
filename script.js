@@ -1,17 +1,21 @@
 // ============================================================
 //  ARIA — script.js
-//  Powered by Groq API (100% FREE, no CORS issues) — updated Sun May  3 14:13:16 UTC 2026
+//  Powered by Groq API (100% FREE, no CORS issues)
 //  Get free key: console.groq.com
 // ============================================================
 
-let apiKey   = '';
+// ============================================================
+//  PASTE YOUR GROQ KEY BELOW (replace: paste your key here)
+// ============================================================
+let apiKey = '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';
+// ============================================================
+
 let isDemo   = false;
 let listening = false;
 let ttsOn    = false;
 let recognition = null;
 let history  = [];
 let msgCount = 0;
-let demoIndex = 0;
 
 // ---- Intent matching (offline fallback) ----
 const intents = [
@@ -29,35 +33,6 @@ function matchIntent(text) {
   return null;
 }
 
-const demoReplies = [
-  "I'm in demo mode. Click ⚙ → get your FREE Groq key from console.groq.com → paste it in!",
-  "Connect your free Groq API key via ⚙ settings to unlock full AI conversation!",
-  "Full AI is free with Groq! Get your key at console.groq.com and paste it in settings ⚙",
-];
-
-// ---- Key management ----
-function saveKey() {
-  const k = document.getElementById('kInput').value.trim();
-  if (!k || !k.startsWith('gsk_')) {
-    toast('Groq key must start with gsk_  — get one free at console.groq.com');
-    return;
-  }
-  apiKey = k; isDemo = false;
-  document.getElementById('modal').style.display = 'none';
-  setStatus('Connected — Groq AI · Free', 'online');
-  setDot(true);
-  toast('✓ Connected! Groq AI is ready');
-}
-
-function demoMode() {
-  isDemo = true;
-  document.getElementById('modal').style.display = 'none';
-  setStatus('Demo mode — click ⚙ to add free Groq key', 'idle');
-  setDot(false);
-}
-function showModal() { document.getElementById('modal').style.display = 'flex'; }
-function setDot(on)  { document.getElementById('sdot').className = 'dot' + (on ? '' : ' off'); }
-
 // ---- Status ----
 function setStatus(text, type='idle') {
   const bar=document.getElementById('sbar'), lbl=document.getElementById('slabel'), st=document.getElementById('stxt');
@@ -68,6 +43,19 @@ function setStatus(text, type='idle') {
   if(type==='thinking')  bar.classList.add('thinking');
   lbl.textContent=text; st.textContent=text;
 }
+
+function setDot(on) { document.getElementById('sdot').className = 'dot' + (on ? '' : ' off'); }
+
+// Set connected status on load
+window.addEventListener('load', () => {
+  if (apiKey && apiKey !== 'paste your key here') {
+    setStatus('Connected — Groq AI · Free', 'online');
+    setDot(true);
+  } else {
+    setStatus('No API key — open script.js and paste your key', 'err');
+    setDot(false);
+  }
+});
 
 function ftime() { return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
 
@@ -136,16 +124,16 @@ async function send() {
 
   try {
     let reply;
-    if(apiKey && !isDemo) {
+    if(apiKey && apiKey !== 'paste your key here') {
       reply = await callGroq(text);
     } else {
       const intent=matchIntent(text);
-      await delay(500+Math.random()*400);
-      reply=intent||demoReplies[demoIndex++%demoReplies.length];
+      await delay(500);
+      reply = intent || "⚠ No API key found! Open script.js and replace 'paste your key here' with your actual Groq key from console.groq.com";
     }
     showTyping(false); addMsg(reply,'bot');
     if(ttsOn) speakText(reply);
-    setStatus(apiKey?'Connected — Groq AI · Free':'Demo mode','online');
+    setStatus('Connected — Groq AI · Free','online');
   } catch(e) {
     showTyping(false);
     addMsg('⚠ '+e.message,'bot');
@@ -157,10 +145,8 @@ async function send() {
 function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
 // ============================================================
-//  GROQ API CALL
-//  - Free tier: 30 req/min, 6000 tokens/min
-//  - No CORS issues — works perfectly from browser
-//  - Ultra fast responses (< 1 second)
+//  GROQ API CALL — Free, fast, no CORS issues
+//  Model: llama-3.1-8b-instant
 // ============================================================
 async function callGroq(userText) {
   const messages = [
@@ -176,7 +162,7 @@ async function callGroq(userText) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',   // free, fast, reliable
+      model: 'llama-3.1-8b-instant',
       messages: messages,
       max_tokens: 1024,
       temperature: 0.7,
@@ -184,8 +170,8 @@ async function callGroq(userText) {
     })
   });
 
-  if (res.status === 401) throw new Error('Invalid Groq key — click ⚙ and enter your gsk_ key from console.groq.com');
-  if (res.status === 429) throw new Error('Rate limit — wait 10 seconds and try again (free tier: 30 req/min)');
+  if (res.status === 401) throw new Error('Invalid Groq key — open script.js and check your key');
+  if (res.status === 429) throw new Error('Rate limit — wait 10 seconds and try again');
 
   if (!res.ok) {
     const err = await res.json().catch(()=>({}));
@@ -217,7 +203,7 @@ function toggleVoice() {
   recognition.onend=()=>{stopListen();if(document.getElementById('inp').value.trim())send();};
   recognition.start();
 }
-function stopListen(){listening=false;if(recognition)recognition.stop();document.getElementById('vbtn').classList.remove('on');setStatus(apiKey?'Connected — Groq AI · Free':'Demo mode','idle');}
+function stopListen(){listening=false;if(recognition)recognition.stop();document.getElementById('vbtn').classList.remove('on');setStatus('Connected — Groq AI · Free','online');}
 
 // ---- TTS ----
 function toggleTTS(){ttsOn=!ttsOn;document.getElementById('tbtn').classList.toggle('on',ttsOn);toast(ttsOn?'🔊 TTS ON':'🔇 TTS OFF');}
@@ -225,7 +211,7 @@ function speakText(text){
   if(!window.speechSynthesis)return; speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text.replace(/[*`#>]/g,'').replace(/<[^>]+>/g,''));
   u.onstart=()=>setStatus('🔊 Speaking...','speaking');
-  u.onend=()=>setStatus(apiKey?'Connected — Groq AI · Free':'Demo mode','idle');
+  u.onend=()=>setStatus('Connected — Groq AI · Free','online');
   speechSynthesis.speak(u);
 }
 
@@ -235,5 +221,5 @@ function resize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHei
 // ---- Events ----
 document.getElementById('inp').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
 document.getElementById('inp').addEventListener('input',function(){resize(this);});
-window.addEventListener('online',()=>{if(apiKey)setStatus('Connected — Groq AI · Free','online');});
+window.addEventListener('online',()=>setStatus('Connected — Groq AI · Free','online'));
 window.addEventListener('offline',()=>setStatus('You are offline','err'));
